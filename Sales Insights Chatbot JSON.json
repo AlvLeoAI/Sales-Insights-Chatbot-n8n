@@ -1,0 +1,287 @@
+{
+  "name": "Sales Insights Chatbot",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -176,
+        160
+      ],
+      "id": "65047a9a-7245-4065-b1ba-bffe492eb593",
+      "name": "When chat message received",
+      "webhookId": ""
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        64,
+        384
+      ],
+      "id": "d0189696-ad73-4b15-93b4-535025cfb069",
+      "name": "OpenRouter Chat Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "{{ $json.output }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        400,
+        160
+      ],
+      "id": "99e54fea-c84d-4171-8860-4853fcfc8e12",
+      "name": "Execute a SQL query",
+      "credentials": {
+        "postgres": {
+          "id": "",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        192,
+        384
+      ],
+      "id": "143493ef-2479-4639-bece-c86c86094d6c",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        928,
+        384
+      ],
+      "id": "33bd1400-10af-4936-90b0-aa1d888956d4",
+      "name": "OpenRouter Chat Model1",
+      "credentials": {
+        "openRouterApi": {
+          "id": "",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## Turn User Query to SQL\n",
+        "height": 520,
+        "width": 300
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "6d9ee9b0-bf9c-4283-9415-f9b97f1a0c6a",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## Execute SQL\n\n",
+        "height": 520,
+        "width": 220,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        352,
+        0
+      ],
+      "id": "98367908-3514-4fdd-a132-9320b6da624d",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "## Combine all data",
+        "height": 520,
+        "width": 150,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        608,
+        0
+      ],
+      "id": "eb878d86-8f29-4fdf-a14c-3a8e2d596b20",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=SQL Data: {{ $json.sql_output }}\nUser Message: {{ $('When chat message received').first().json.chatInput }}",
+        "options": {
+          "systemMessage": "=You are a business analytics expert. A user will ask a sales-related question, and you’ll be provided with the full SQL query results in JSON format from the “Code” node.\n\n🎯 Your job:\n- Write a clear, detailed and extensive summary in 2–3 short paragraphs.\n- Make sure to always refer to numeric data!\n- Use friendly, natural language (no code or bullet points).\n- Focus only on the question asked — no extra details.\n- Format large numbers with commas (e.g. $142,500).\n- Highlight best/worst results if obvious.\n\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2,
+      "position": [
+        848,
+        160
+      ],
+      "id": "0dcb3cdc-8d15-4635-a03b-437e130b61c1",
+      "name": "Response Agent"
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "=You are an expert SQL query generator designed for Supabase (PostgreSQL). Your job is to convert natural language questions into clean, valid SQL queries — and nothing else.\n\nNEVER calculate profit manually using \"Revenue ($)\" and \"Unit Price ($)\".\nAlways use the existing \"Profit ($)\" column when asked about profit.\n\nRULES:\n\nOutput ONLY the SQL query. No explanations, no markdown formatting, no comments.\n\nWrap all table and column names in double quotes.\n\nUse exact table and column names provided.\n\nAlways include numeric data to back up answers.\n\nWhen using UNION ALL:\n\nDo not use ORDER BY or LIMIT inside each individual SELECT.\n\nCombine results in a CTE (e.g. raw_data) and apply ORDER BY / LIMIT outside the UNION using a second CTE (e.g. ranked_data) or SELECT DISTINCT ON.\n\nBest practices:\n\nUse DISTINCT ON (\"Year\") ... ORDER BY \"Year\", ... DESC to get top-ranked items after UNION\n\nUse NULLIF(..., 0) to avoid division-by-zero in percentage calculations\n\nAlways alias subqueries or derived tables\n\nAlways apply sorting in the outer queries when using UNION ALL\n\nAVAILABLE TABLES:\n\n\"Sales Data 2024\"\nColumns:\n\n\"Purchase ID\"\n\n\"Month\"\n\n\"Region\"\n\n\"Product\"\n\n\"Units Sold\"\n\n\"Unit Price ($)\"\n\n\"Revenue ($)\"\n\n\"Profit ($)\"\n\n\"Sales Data 2025\"\nSame structure as 2024.\n\nEXAMPLE:\n\nUser Prompt:\nhow much did we make in June 2024, 2025, what the percentage difference, and what was the best product in both months?\n\nOutput:\n\nsql\nCopy\nEdit\nWITH june_revenue AS (\n  SELECT '2024' AS \"Year\", SUM(\"Revenue ($)\") AS \"Total Revenue ($)\" FROM \"Sales Data 2024\" WHERE \"Month\" = 'June'\n  UNION ALL\n  SELECT '2025' AS \"Year\", SUM(\"Revenue ($)\") AS \"Total Revenue ($)\" FROM \"Sales Data 2025\" WHERE \"Month\" = 'June'\n),\nbest_products_raw AS (\n  SELECT '2024' AS \"Year\", \"Product\", SUM(\"Units Sold\") AS \"Units Sold\" FROM \"Sales Data 2024\" WHERE \"Month\" = 'June' GROUP BY \"Product\"\n  UNION ALL\n  SELECT '2025' AS \"Year\", \"Product\", SUM(\"Units Sold\") AS \"Units Sold\" FROM \"Sales Data 2025\" WHERE \"Month\" = 'June' GROUP BY \"Product\"\n),\nbest_products AS (\n  SELECT DISTINCT ON (\"Year\") \"Year\", \"Product\" FROM best_products_raw ORDER BY \"Year\", \"Units Sold\" DESC\n)\nSELECT\n  (SELECT \"Total Revenue ($)\" FROM june_revenue WHERE \"Year\" = '2024') AS \"Revenue 2024\",\n  (SELECT \"Total Revenue ($)\" FROM june_revenue WHERE \"Year\" = '2025') AS \"Revenue 2025\",\n  ROUND((\n    (SELECT \"Total Revenue ($)\" FROM june_revenue WHERE \"Year\" = '2025') -\n    (SELECT \"Total Revenue ($)\" FROM june_revenue WHERE \"Year\" = '2024')\n  ) * 100.0 / NULLIF((SELECT \"Total Revenue ($)\" FROM june_revenue WHERE \"Year\" = '2024'), 0), 2) AS \"Percentage Difference (%)\",\n  (SELECT \"Product\" FROM best_products WHERE \"Year\" = '2024') AS \"Best Product 2024\",\n  (SELECT \"Product\" FROM best_products WHERE \"Year\" = '2025') AS \"Best Product 2025\";\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2,
+      "position": [
+        48,
+        160
+      ],
+      "id": "048170ad-ed94-4e97-a545-e18aa21132a7",
+      "name": "SQL Generator"
+    },
+    {
+      "parameters": {
+        "content": "## Create Response\n\n\n\n",
+        "height": 520,
+        "width": 380
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        800,
+        0
+      ],
+      "id": "a69571b8-2bae-4451-a81a-4c89e74de2d5",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows = $input.all().map(i => i.json);\nreturn [{ json: { sql_output: JSON.stringify(rows) } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        624,
+        160
+      ],
+      "id": "2ea4f9cf-e818-4804-8d86-1c1c20be6902",
+      "name": "Combine all data"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "SQL Generator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "SQL Generator",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "SQL Generator",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a SQL query": {
+      "main": [
+        [
+          {
+            "node": "Combine all data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Response Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SQL Generator": {
+      "main": [
+        [
+          {
+            "node": "Execute a SQL query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Combine all data": {
+      "main": [
+        [
+          {
+            "node": "Response Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": ""
+  },
+  "id": "",
+  "tags": []
+}
